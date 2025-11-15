@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Опросник «Какая ты Луна?»</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 820px; margin: 20px auto; padding: 0 16px; }
+  h1,h2{ text-align:center; }
+  .question { margin: 14px 0; padding: 10px; border-radius:6px; background:#f7f7f7; }
+  label { display:block; margin:6px 0; cursor:pointer; }
+  textarea { width:100%; min-height:70px; padding:8px; font-size:14px; }
+  button { padding:10px 16px; font-size:16px; margin-top:12px; }
+  #canvasWrap { display:flex; gap:10px; align-items:flex-start; margin-top:8px; }
+  canvas { border:1px solid #aaa; background:white; touch-action:none; }
+  .small { font-size:13px; color:#444; }
+  #status { margin-top:12px; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+  <h1>Экспериментальный тест «Какая ты Луна?»</h1>
+  <p class="small">Пожалуйста, отвечай честно. Нарисуй Луну в поле справа (или нажми "Очистить" и попробуй снова).</p>
+
+  <div class="question">
+    <strong>Вводный текст (прочитай стихотворение):</strong>
+    <p>
+По небу крадется луна,
+На холме тьма седеет,
+На воды пала тишина.
+С долины ветер веет,
+Молчит певица вешних дней
+В пустыне темной рощи,
+Стада почили средь полей,
+И тих полет полнощи;
+И мирный неги уголок
+Ночь сумраком одела,
+В камине гаснет огонек,
+И свечка нагорела;
+Стоит богов домашних лик
+В кивоте небогатом,
+И бледный теплится ночник
+Пред глиняным Пенатом. 
+(А.С. Пушкин)
+    </p>
+  </div>
+
+  <div class="question" id="q1">
+    <strong>1) Что ты чувствуешь после прочтения стихотворения?</strong>
+    <label><input type="radio" name="feeling" value="Радость"> Радость</label>
+    <label><input type="radio" name="feeling" value="Спокойствие"> Спокойствие</label>
+    <label><input type="radio" name="feeling" value="Небольшая грусть"> Небольшая грусть</label>
+    <label><input type="radio" name="feeling" value="Страх"> Страх</label>
+  </div>
+
+  <div class="question" id="q2">
+    <strong>2) Какой цвет ты представляешь, когда видишь Луну в этом стихотворении? (обведи)</strong>
+    <label><input type="radio" name="color" value="жёлтый"> 1. жёлтый</label>
+    <label><input type="radio" name="color" value="серый"> 2. серый</label>
+    <label><input type="radio" name="color" value="голубой"> 3. голубой</label>
+    <label><input type="radio" name="color" value="белый"> 4. белый</label>
+  </div>
+
+  <div class="question" id="q3">
+    <strong>3) Что делает Луна в этом стихотворении?</strong>
+    <label><input type="radio" name="action" value="Спит"> Спит</label>
+    <label><input type="radio" name="action" value="Светит и наблюдает"> Светит и наблюдает</label>
+    <label><input type="radio" name="action" value="Прячется за тучкой"> Прячется за тучкой</label>
+    <label><input type="radio" name="action" value="Танцует в небе"> Танцует в небе</label>
+  </div>
+
+  <div class="question" id="q4">
+    <strong>4) Если бы Луна была человеком, какой бы она была?</strong>
+    <label><input type="radio" name="person" value="Доброй бабушкой"> Доброй бабушкой</label>
+    <label><input type="radio" name="person" value="Волшебницей"> Волшебницей</label>
+    <label><input type="radio" name="person" value="Грустной принцессой"> Грустной принцессой</label>
+    <label><input type="radio" name="person" value="Малышкой, что боится темноты"> Малышкой, что боится темноты</label>
+  </div>
+
+  <div class="question" id="q5">
+    <strong>5) Нарисуй свою Луну и подпиши, какая она — весёлая, грустная, добрая или одинокая.</strong>
+    <div id="canvasWrap">
+      <div>
+        <canvas id="draw" width="300" height="300"></canvas>
+        <div style="margin-top:6px;">
+          <button type="button" id="clearBtn">Очистить</button>
+          <button type="button" id="downloadBtn">Скачать рисунок</button>
+        </div>
+      </div>
+      <div style="flex:1">
+        <label>Подпись (коротко):</label>
+        <input type="text" id="caption" placeholder="Например: весёлая" style="width:100%; padding:6px; font-size:14px;">
+        <p class="small">Если не хочешь рисовать — напиши словами, какая она.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-top:10px;">
+    <button id="sendBtn">Отправить ответы</button>
+  </div>
+
+  <div id="status"></div>
+
+<script>
+/* --------------- Настройка: вставьте сюда URL вашего Apps Script веб-приложения --------------- */
+const SCRIPT_URL = "ЗАМЕНИТЕ_НА_ВАШ_URL_ВЕБ_ПРИЛОЖЕНИЯ";
+/* -------------------------------------------------------------------------------------------- */
+
+function getRadioValue(name){
+  const r = document.querySelector('input[name="'+name+'"]:checked');
+  return r ? r.value : "";
+}
+
+/* Canvas для рисования */
+const canvas = document.getElementById('draw');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+let lastX = 0, lastY = 0;
+ctx.lineWidth = 3;
+ctx.lineCap = 'round';
+
+function pointerDown(e){
+  drawing = true;
+  const rect = canvas.getBoundingClientRect();
+  lastX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  lastY = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+}
+function pointerMove(e){
+  if(!drawing) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  ctx.beginPath();
+  ctx.moveTo(lastX,lastY);
+  ctx.lineTo(x,y);
+  ctx.stroke();
+  lastX = x; lastY = y;
+}
+function pointerUp(){ drawing = false; }
+
+canvas.addEventListener('mousedown', pointerDown);
+canvas.addEventListener('mousemove', pointerMove);
+canvas.addEventListener('mouseup', pointerUp);
+canvas.addEventListener('mouseout', pointerUp);
+canvas.addEventListener('touchstart', pointerDown);
+canvas.addEventListener('touchmove', pointerMove, {passive:false});
+canvas.addEventListener('touchend', pointerUp);
+
+/* Кнопки очистки и скачивания */
+document.getElementById('clearBtn').addEventListener('click', ()=> {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+});
+document.getElementById('downloadBtn').addEventListener('click', ()=> {
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url; a.download = 'my_moon.png';
+  document.body.appendChild(a); a.click(); a.remove();
+});
+
+/* Отправка данных */
+document.getElementById('sendBtn').addEventListener('click', async ()=> {
+  const payload = {
+    timestamp: new Date().toISOString(),
+    q1_feeling: getRadioValue('feeling'),
+    q2_color: getRadioValue('color'),
+    q3_action: getRadioValue('action'),
+    q4_person: getRadioValue('person'),
+    q5_caption: document.getElementById('caption').value.trim(),
+    q5_draw_dataurl: canvas.toDataURL('image/png') // передаём рисунок как dataURL
+  };
+
+  if(!SCRIPT_URL || SCRIPT_URL.includes('ЗАМЕНИТЕ')) {
+    document.getElementById('status').innerText = 
+      "Ошибка: вы не заменили SCRIPT_URL на URL вашего веб-приложения. Смотри инструкцию.";
+    return;
+  }
+
+  document.getElementById('status').innerText = "Отправка...";
+  try {
+    const resp = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if(resp.ok){
+      const j = await resp.json().catch(()=>null);
+      document.getElementById('status').innerText = "Готово — ответ отправлен.\n" + (j && j.message ? j.message : "");
+    } else {
+      const txt = await resp.text();
+      document.getElementById('status').innerText = "Ошибка сервера: " + resp.status + " " + txt;
+    }
+  } catch(err){
+    document.getElementById('status').innerText = "Ошибка отправки: " + err;
+  }
+});
+</script>
+</body>
+</html>
